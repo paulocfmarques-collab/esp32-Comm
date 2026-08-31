@@ -1,0 +1,9 @@
+C:\PC\Windows\CommEspe32\CommEspe32\bin\Release\CommEspe32.exe.config
+C:\PC\Windows\CommEspe32\CommEspe32\bin\Release\CommEspe32.exe
+C:\PC\Windows\CommEspe32\CommEspe32\bin\Release\CommEspe32.pdb
+C:\PC\Windows\CommEspe32\CommEspe32\obj\Release\CommEspe32.csprojResolveAssemblyReference.cache
+C:\PC\Windows\CommEspe32\CommEspe32\obj\Release\CommEspe32.Form1.resources
+C:\PC\Windows\CommEspe32\CommEspe32\obj\Release\CommEspe32.Properties.Resources.resources
+C:\PC\Windows\CommEspe32\CommEspe32\obj\Release\CommEspe32.csproj.GenerateResource.Cache
+C:\PC\Windows\CommEspe32\CommEspe32\obj\Release\CommEspe32.exe
+C:\PC\Windows\CommEspe32\CommEspe32\obj\Release\CommEspe32.pdb
