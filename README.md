@@ -4,9 +4,11 @@ Aplicativo Windows desenvolvido em **C# WinForms** para comunicação UDP com di
 
 O objetivo do projeto é fornecer uma ferramenta simples para envio de comandos e monitoramento de respostas em tempo real através da rede, facilitando testes, desenvolvimento, depuração e manutenção de aplicações embarcadas.
 
-![Platform](httpsds.io/badge/Platform-Windows-blue
-![Language](https://img.shields.io/badge/Language-C%23mework.shields.io/badge/.NET-WinForms-purple
-![Protocolg.shields.io/badge/Protocol-UDP-orange
+![Platform](https://img.shieldsatform-Windows-blue
+https://img.shields.io/badge/Language-C%23-green
+https://img.shields.io/badge/.NET-WinForms-purple
+https://img.shields.io/badge/Protocol-UDP-orange
+![tps://img.shields.io/badge/License-MIT-lightgrey
 
 ---
 
