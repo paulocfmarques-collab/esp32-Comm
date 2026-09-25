@@ -1,269 +1,237 @@
 <div align="center">
 
-# CommEspe32
+# ESP32 Comm
 
-### Cliente desktop Windows para diagnóstico e comunicação UDP com ESP32
+### Windows desktop client for bidirectional UDP communication with ESP32 devices
 
-Aplicação WinForms em C# para enviar comandos, receber respostas e acompanhar mensagens de dispositivos ESP32 em tempo real pela rede local.
+A lightweight WinForms diagnostic console for sending commands to an ESP32 over IPv4/UDP and displaying device responses in real time.
 
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D6?style=flat-square&logo=windows)](https://www.microsoft.com/windows)
 [![Language](https://img.shields.io/badge/language-C%23-512BD4?style=flat-square&logo=csharp)](https://learn.microsoft.com/dotnet/csharp/)
 [![UI](https://img.shields.io/badge/UI-WinForms-5C2D91?style=flat-square)](https://learn.microsoft.com/dotnet/desktop/winforms/)
-[![Protocol](https://img.shields.io/badge/protocol-UDP-F58220?style=flat-square)](https://datatracker.ietf.org/doc/html/rfc768)
-[![Framework](https://img.shields.io/badge/.NET_Framework-4.5-512BD4?style=flat-square)](https://dotnet.microsoft.com/download/dotnet-framework)
+[![Runtime](https://img.shields.io/badge/runtime-.NET%20Framework%204.5-512BD4?style=flat-square)](https://dotnet.microsoft.com/download/dotnet-framework)
+[![Transport](https://img.shields.io/badge/transport-UDP%2FIPv4-F58220?style=flat-square)](https://datatracker.ietf.org/doc/html/rfc768)
 
 </div>
 
 ---
 
-## Sumário
+## Contents
 
-- [Visão geral](#visão-geral)
-- [Principais recursos](#principais-recursos)
-- [Arquitetura](#arquitetura)
-- [Esquemático de conexão](#esquemático-de-conexão)
-- [Fluxo de dados](#fluxo-de-dados)
-- [Protocolo de comunicação](#protocolo-de-comunicação)
-- [Requisitos](#requisitos)
-- [Compilação e execução](#compilação-e-execução)
-- [Uso](#uso)
-- [Firmware do ESP32](#firmware-do-esp32)
-- [Estrutura do projeto](#estrutura-do-projeto)
-- [Limitações e boas práticas](#limitações-e-boas-práticas)
+- [Overview](#overview)
+- [Capabilities](#capabilities)
+- [Architecture](#architecture)
+- [Network schematic](#network-schematic)
+- [Data flow](#data-flow)
+- [Communication contract](#communication-contract)
+- [Requirements](#requirements)
+- [Build and run](#build-and-run)
+- [Using the application](#using-the-application)
+- [ESP32 firmware integration](#esp32-firmware-integration)
+- [Project structure](#project-structure)
+- [Limitations and security](#limitations-and-security)
 - [Roadmap](#roadmap)
-- [Contribuição](#contribuição)
-- [Licença](#licença)
+- [Contributing](#contributing)
 
-## Visão geral
+## Overview
 
-O **CommEspe32** é uma ferramenta de bancada para desenvolvimento, teste e diagnóstico de firmware embarcado. O operador informa o endereço IPv4 e a porta UDP do ESP32, inicia o listener local e envia comandos de texto pela interface gráfica.
+**ESP32 Comm** is a bench-side tool for developing, testing, and diagnosing embedded firmware. It provides a simple operator workflow:
 
-A aplicação:
+1. enter the ESP32 IPv4 address and UDP port;
+2. open a local UDP listener;
+3. type and transmit an ASCII command; and
+4. inspect UTF-8 responses in a scrollable diagnostic console.
 
-1. abre um `UdpClient` na porta informada;
-2. envia o comando para o endpoint configurado;
-3. mantém uma thread dedicada aguardando datagramas de resposta;
-4. converte as respostas recebidas como UTF-8; e
-5. atualiza o console visual com rolagem automática.
+The repository contains the **Windows client only**. The ESP32 firmware is external and must implement the command and response behavior required by your project.
 
-> **Importante:** este repositório contém o cliente Windows. O firmware do ESP32 é externo e deve implementar o protocolo de comandos/respostas esperado pela sua aplicação.
+> **Naming note:** the solution and C# namespace are currently named `CommEspe32`, while the repository and product documentation use `ESP32 Comm`.
 
-## Principais recursos
+## Capabilities
 
-- Configuração de IP e porta do dispositivo.
-- Validação do endereço IPv4 e filtragem de caracteres no campo de porta.
-- Comunicação UDP bidirecional em rede local.
-- Envio de comandos ASCII personalizados.
-- Recepção assíncrona por thread dedicada.
-- Atualização segura dos controles WinForms usando `Invoke`.
-- Console de respostas com limpeza ao iniciar e auto-scroll.
-- Bloqueio dos campos de configuração enquanto a escuta está ativa.
-- Compatibilidade com ESP32 conectado por Wi-Fi ou Ethernet, desde que acessível pela rede.
+- IPv4 address and numeric-port input controls.
+- Bidirectional UDP communication over Wi-Fi or Ethernet.
+- ASCII command transmission to a configured endpoint.
+- Dedicated receive thread so the WinForms UI remains responsive.
+- Safe cross-thread UI updates via `Control.Invoke`.
+- UTF-8 response decoding and auto-scrolling output console.
+- Listener state management that locks endpoint fields while active.
+- Simple integration path for custom diagnostic commands.
 
-## Arquitetura
+## Architecture
 
 ```mermaid
 flowchart LR
-    U[Operador] --> UI[Interface WinForms\nForm1]
-    UI --> V[Validação de IP\ne porta]
-    V --> S[UdpClient\nporta local]
-    S -->|Datagrama UDP| N[Rede local\nWi-Fi ou Ethernet]
-    N --> D[ESP32\nfirmware do dispositivo]
-    D -->|Resposta UDP| N
-    N --> S
-    S --> R[Thread ReceiveThread]
-    R --> M[Marshal para a UI\nControl.Invoke]
-    M --> L[RichTextBox\nlog de respostas]
+    Operator([Operator]) --> Form[WinForms Form1]
+    Form --> Validate[Validate IPv4 + port]
+    Validate --> Socket[UdpClient<br/>local listener]
+    Socket -->|UDP datagram| Network[(LAN / Wi-Fi / Ethernet)]
+    Network --> Device[ESP32 firmware]
+    Device -->|UDP response| Network
+    Network --> Socket
+    Socket --> Receiver[ReceiveThread]
+    Receiver -->|Invoke| Console[Read-only response console]
+    Console --> Operator
 ```
 
-### Componentes principais
+### Component responsibilities
 
-| Componente | Responsabilidade |
+| Component | Responsibility |
 |---|---|
-| `Program.cs` | Inicializa o runtime visual e abre `Form1`. |
-| `Form1.cs` | Controla estado da comunicação, valida entradas, envia datagramas e recebe respostas. |
-| `Form1.Designer.cs` | Código gerado pelo designer dos controles WinForms. |
-| `UdpClient` | Socket UDP usado para escuta e transmissão. |
-| `ReceiveThread` | Aguarda respostas sem bloquear a thread da interface. |
-| `Properties/Resources.resx` | Ícones e recursos visuais dos botões. |
-| ESP32 firmware | Implementação externa que interpreta comandos e produz respostas. |
+| `Program.cs` | Starts the WinForms application. |
+| `Form1.cs` | Validates inputs, opens/closes the socket, sends commands, receives responses, and updates the UI. |
+| `Form1.Designer.cs` | Defines the generated WinForms controls and layout. |
+| `UdpClient` | Provides the UDP socket used for local reception and device transmission. |
+| `ReceiveThread` | Blocks on `udp.Receive` without blocking the UI thread. |
+| `Properties/Resources.resx` | Stores the listener-state button images. |
+| ESP32 firmware | External component that parses commands and sends responses. |
 
-## Esquemático de conexão
-
-O ESP32 e o computador devem estar na mesma rede, ou em redes roteadas que permitam tráfego UDP entre os endpoints. Neste exemplo, o computador escuta na porta `5000` e envia para o ESP32 em `192.168.0.100:5000`.
+## Network schematic
 
 ```text
-                           REDE LOCAL
-┌──────────────────────────────┐       UDP        ┌──────────────────────────────┐
-│ Computador Windows           │  ─────────────▶  │ ESP32                        │
-│                              │  comando         │                              │
-│ CommEspe32 / WinForms       │  ◀─────────────  │ Firmware UDP                 │
-│ UdpClient escuta :5000      │  resposta        │ IP: 192.168.0.100            │
-└──────────────┬───────────────┘                  └──────────────┬───────────────┘
-               │                                                 │
-               └────────────── Wi-Fi / Ethernet ─────────────────┘
+                              LOCAL NETWORK
+
+  ┌──────────────────────────────┐                    ┌────────────────────────────┐
+  │ Windows workstation           │                    │ ESP32 device                │
+  │                              │                    │                            │
+  │ ESP32 Comm / WinForms        │                    │ User firmware              │
+  │ UdpClient listens :5000      │                    │ UDP server :5000           │
+  │                              │                    │ IP: 192.168.0.100          │
+  └───────────────┬──────────────┘                    └─────────────┬──────────────┘
+                  │                                                 │
+                  └────────────── Wi-Fi / Ethernet ──────────────────┘
+
+                 command: PC ───────────────────────────────▶ ESP32
+                response: PC ◀─────────────────────────────── ESP32
 ```
 
-### Endpoints
+### Endpoint model
 
-| Papel | Endereço de exemplo | Descrição |
+| Role | Example | Description |
 |---|---|---|
-| Cliente Windows | `0.0.0.0:5000` | Socket local aberto pelo aplicativo para receber respostas. |
-| Destino ESP32 | `192.168.0.100:5000` | IP e porta informados na interface. |
-| Transporte | UDP/IPv4 | Sem conexão persistente e sem garantia de entrega ou ordem. |
+| Windows listener | `0.0.0.0:5000` | Local socket opened by the application to receive datagrams. |
+| ESP32 destination | `192.168.0.100:5000` | IP and port entered in the application. |
+| Transport | UDP over IPv4 | Connectionless transport with no delivery or ordering guarantee. |
 
-> A porta local e a porta de destino são configuradas com o mesmo valor pela implementação atual. O firewall do Windows deve permitir tráfego UDP nessa porta.
+The current implementation uses the same configured port for the local listener and the ESP32 destination. Configure the Windows firewall to allow inbound UDP traffic on that port.
 
-## Fluxo de dados
+## Data flow
 
 ```mermaid
 sequenceDiagram
-    participant O as Operador
-    participant UI as CommEspe32
+    autonumber
+    actor User as Operator
+    participant UI as Form1 / WinForms
     participant UDP as UdpClient
-    participant E as ESP32
+    participant ESP as ESP32 firmware
 
-    O->>UI: Informa IP, porta e comando
-    O->>UI: Clica em Listen
-    UI->>UI: Valida IPv4 e porta
-    UI->>UDP: Abre socket na porta local
-    UI->>UI: Inicia ReceiveThread
-    O->>UI: Clica em Envia
-    UI->>UDP: Codifica comando como ASCII
-    UDP->>E: Envia datagrama UDP
-    E->>UDP: Retorna datagrama de resposta
-    UDP->>UI: ReceiveThread obtém bytes
-    UI->>UI: Decodifica resposta como UTF-8
-    UI-->>O: Atualiza log e posição do scroll
+    User->>UI: Enter IPv4 address and port
+    User->>UI: Click Listen
+    UI->>UI: Validate address and numeric port
+    UI->>UDP: Bind local UDP socket
+    UI->>UI: Start ReceiveThread
+    User->>UI: Enter command and click Envia
+    UI->>UDP: Encode command as ASCII
+    UDP->>ESP: Send UDP datagram
+    ESP->>UDP: Send response datagram
+    UDP->>UI: ReceiveThread obtains bytes
+    UI->>UI: Decode bytes as UTF-8
+    UI-->>User: Append response and scroll console
 ```
 
-### Ciclo de vida do listener
+### Listener state machine
 
 ```text
-[Parado]
-   │  Listen + entradas válidas
-   ▼
-[Socket aberto / thread iniciada]
-   │  Envia comandos e recebe respostas
-   ▼
-[Ativo]
-   │  Listen novamente ou fechamento da janela
-   ▼
-[Socket encerrado / controles liberados]
+                 valid endpoint + Listen
+  ┌──────────┐ ───────────────────────────▶ ┌─────────────────────┐
+  │ Stopped  │                               │ Listening           │
+  │ editable │ ◀─────────────────────────── │ socket + thread     │
+  └──────────┘       Listen / close         │ endpoint locked     │
+                                            └─────────────────────┘
 ```
 
-## Protocolo de comunicação
+## Communication contract
 
-O protocolo é intencionalmente simples: um comando é enviado como um datagrama UDP contendo texto; o firmware responde com outro datagrama de texto. O cliente não impõe um catálogo fixo de comandos.
+The client sends the contents of the command textbox as one ASCII UDP datagram. It accepts any response payload from the ESP32 and displays it as UTF-8 text followed by a new line.
 
 ```text
-Comando:  ASCII, sem envelope obrigatório
-Resposta: UTF-8, exibida como uma linha no log
+Outbound: ASCII bytes | one UDP datagram | command text
+Inbound:  UTF-8 bytes  | one UDP datagram | displayed in response console
 ```
 
-### Exemplos de comandos
+The client does not currently add framing, message IDs, checksums, authentication, retries, or a fixed command catalog. Those behaviors belong in the firmware/application protocol if needed.
 
-Os comandos abaixo são sugestões de contrato para o firmware, não uma lista implementada pelo cliente:
+### Example command set
 
-| Comando | Exemplo de finalidade |
+These are suggested firmware commands, not commands enforced by the client:
+
+| Command | Example purpose |
 |---|---|
-| `CPU` | Modelo, revisão, núcleos e frequência do processador. |
-| `RAM` | Heap livre, menor heap e maior bloco livre. |
-| `NET_INFO` | IP, gateway, máscara, RSSI e SSID. |
-| `TEMP` | Leitura de temperatura, se suportada pelo firmware. |
-| `UPTIME` | Tempo de funcionamento do dispositivo. |
-| `MAC` | Endereço MAC da interface de rede. |
-| `LED_ON` / `LED_OFF` | Controle de uma saída digital. |
-| `RESET_WIFI` | Reinicialização da configuração de rede. |
+| `CPU` | Report chip model, revision, cores, and frequency. |
+| `RAM` | Report free heap and memory statistics. |
+| `NET_INFO` | Report IP, gateway, mask, RSSI, and SSID. |
+| `TEMP` | Return a temperature reading when supported. |
+| `UPTIME` | Return device uptime. |
+| `MAC` | Return the network interface MAC address. |
+| `LED_ON` / `LED_OFF` | Control a digital output. |
+| `RESET_WIFI` | Reset network configuration. |
 
-### Exemplo de troca
+Example exchange:
 
 ```text
 TX → CPU
-RX ← Modelo: ESP32-D0WD-V3
-     Revisao: 301
-     Nucleos: 2
+RX ← Model: ESP32-D0WD-V3
+     Revision: 301
+     Cores: 2
      CPU: 240 MHz
-     RAM livre: 230136 bytes
+     Free RAM: 230136 bytes
 ```
 
-## Requisitos
+## Requirements
 
-### Execução
+### Runtime
 
-- Windows com suporte ao **.NET Framework 4.5**.
-- Conectividade IP entre o computador e o ESP32.
-- Endereço IPv4 e porta UDP conhecidos.
-- Regra de firewall permitindo a porta UDP utilizada.
+- Windows with .NET Framework 4.5 support.
+- IP connectivity between the workstation and ESP32.
+- Known ESP32 IPv4 address and UDP port.
+- Windows Firewall rule allowing the selected UDP port.
 
-### Desenvolvimento
+### Development
 
-- Visual Studio 2019 ou superior com suporte a projetos .NET Framework/WinForms.
-- SDK/targeting pack do **.NET Framework 4.5**.
-- Permissão para restaurar/compilar projetos legados do MSBuild, quando necessário.
+- Visual Studio 2019 or newer.
+- .NET Framework 4.5 targeting pack.
+- Support for legacy MSBuild/.NET Framework WinForms projects.
 
-## Compilação e execução
-
-Clone o repositório oficial:
+## Build and run
 
 ```bash
 git clone https://github.com/paulocfmarques-collab/esp32-Comm.git
 cd esp32-Comm
 ```
 
-Abra a solução no Visual Studio:
+Open `CommEspe32/CommEspe32.sln` in Visual Studio, select `Debug` or `Release` and `Any CPU`, then choose **Build → Rebuild Solution**. Start with **F5** or **Debug → Start Without Debugging**.
 
-```text
-CommEspe32/CommEspe32.sln
-```
-
-Em seguida:
-
-1. selecione `Debug` ou `Release`;
-2. selecione `Any CPU`;
-3. execute **Build → Rebuild Solution** (`Ctrl + Shift + B`); e
-4. inicie com **F5** ou **Debug → Start Without Debugging**.
-
-O executável de saída é gerado em uma pasta semelhante a:
+Build output is normally written to:
 
 ```text
 CommEspe32/CommEspe32/bin/Debug/
 CommEspe32/CommEspe32/bin/Release/
 ```
 
-## Uso
+## Using the application
 
-### 1. Prepare o ESP32
+1. **Prepare the ESP32.** Connect it to the network, start its UDP listener, and make it reply to the sender's IP and source port.
+2. **Configure the endpoint.** For example:
+   ```text
+   IP:    192.168.0.100
+   Porta: 5000
+   ```
+3. **Start listening.** Click **Listen**. The endpoint fields become locked and command controls are enabled.
+4. **Send a command.** Enter a command and click **Envia**. Responses appear in **Resposta**.
+5. **Stop communication.** Click **Listen** again or close the window. The socket is closed when the form exits.
 
-Configure o firmware para:
+## ESP32 firmware integration
 
-- conectar-se à rede;
-- escutar a porta UDP escolhida;
-- interpretar os comandos definidos pelo seu projeto; e
-- responder ao IP e à porta de origem do datagrama.
-
-### 2. Inicie a escuta
-
-Na aplicação, preencha:
-
-```text
-IP:    192.168.0.100
-Porta: 5000
-```
-
-Clique em **Listen**. Com a escuta ativa, os campos de IP e porta ficam bloqueados e os controles de envio/log são habilitados.
-
-### 3. Envie um comando
-
-Digite o comando no campo **Comando** e clique em **Envia**. As respostas recebidas aparecerão no campo **Resposta**.
-
-### 4. Pare a comunicação
-
-Clique novamente em **Listen** para interromper a escuta e liberar a configuração. Ao fechar a janela, o socket UDP é encerrado.
-
-## Firmware do ESP32
-
-O firmware precisa responder ao remetente do pacote. Um esqueleto conceitual usando a API `WiFiUDP` pode ser adaptado ao seu projeto:
+The firmware should reply to the source endpoint of each received packet. A conceptual Arduino/ESP32 `WiFiUDP` loop looks like this:
 
 ```cpp
 int packetSize = udp.parsePacket();
@@ -275,7 +243,7 @@ if (packetSize > 0) {
     if (length > 0) {
         buffer[length] = '\0';
 
-        // Interprete o comando e gere a resposta.
+        // Parse the command and build a response here.
         udp.beginPacket(udp.remoteIP(), udp.remotePort());
         udp.print("OK");
         udp.endPacket();
@@ -283,9 +251,9 @@ if (packetSize > 0) {
 }
 ```
 
-Para uma integração robusta, considere adicionar no firmware um limite de tamanho, normalização de comandos, resposta de erro e identificação do dispositivo. O cliente atual não implementa autenticação, criptografia, retries ou confirmação de entrega.
+For production use, define a maximum payload size, normalize commands, return explicit errors, identify the device, and document encoding, terminators, timeout behavior, and protocol versioning.
 
-## Estrutura do projeto
+## Project structure
 
 ```text
 esp32-Comm/
@@ -309,52 +277,49 @@ esp32-Comm/
             └── Settings.Designer.cs
 ```
 
-## Limitações e boas práticas
+## Limitations and security
 
-- **UDP não garante entrega, ordem ou ausência de duplicidade.** Para comandos críticos, implemente ACK, timeout e retry no protocolo.
-- **Não há autenticação ou criptografia.** Use o cliente em rede confiável ou evolua o transporte/protocolo antes de expô-lo a redes não confiáveis.
-- **O comando é enviado sem validação semântica.** A validação de conteúdo deve ser feita no firmware e, idealmente, também na interface.
-- **A implementação atual usa thread dedicada para recepção.** Evoluções futuras podem substituir `Thread.Abort()` por cancelamento cooperativo e encerramento controlado do socket.
-- **Evite reutilizar portas ocupadas.** Se a abertura do socket falhar, verifique firewall, permissões e outro processo usando a porta.
-- **Mantenha o firmware e o cliente com contratos documentados.** Defina tamanho máximo, encoding, terminadores, códigos de erro e versão do protocolo.
+- **UDP is unreliable.** Delivery, ordering, and uniqueness are not guaranteed. Add ACKs, timeouts, and retries for critical commands.
+- **There is no authentication or encryption.** Use only on trusted networks unless the protocol is extended with appropriate security controls.
+- **Commands are not semantically validated by the client.** Validate and authorize commands in firmware.
+- **The receiver uses a dedicated thread.** Future maintenance should prefer cooperative cancellation and deterministic socket disposal over forceful thread termination.
+- **Payload and protocol limits are not enforced.** Define maximum sizes and structured error responses before production deployment.
+- **Port conflicts are possible.** If binding fails, check firewall rules and other processes using the selected port.
 
 ## Roadmap
 
-- [ ] Histórico de comandos e favoritos.
-- [ ] Exportação do log para TXT/CSV.
-- [ ] Persistência de IP e porta.
-- [ ] Descoberta automática de ESP32 na rede.
-- [ ] Suporte a múltiplos dispositivos.
-- [ ] Timeout, ACK e retry configuráveis.
-- [ ] Indicador de estado e métricas de latência.
-- [ ] Protocolo versionado com respostas estruturadas em JSON.
-- [ ] Tema escuro e melhorias de acessibilidade.
-- [ ] Alternativas de transporte, como TCP, MQTT ou BLE.
+- [ ] Command history and favorites.
+- [ ] TXT/CSV log export.
+- [ ] Persisted IP and port settings.
+- [ ] Automatic ESP32 discovery.
+- [ ] Multi-device support.
+- [ ] Configurable timeout, ACK, and retry policy.
+- [ ] Connection status and latency metrics.
+- [ ] Versioned JSON response protocol.
+- [ ] Dark theme and accessibility improvements.
+- [ ] TCP, MQTT, or BLE transports.
 
-## Contribuição
+## Contributing
 
-Sugestões, correções e melhorias são bem-vindas:
+1. Fork the repository.
+2. Create a focused feature branch.
+3. Document the expected behavior and validation performed.
+4. Keep diagrams and protocol documentation synchronized with code changes.
+5. Open a Pull Request with sufficient technical context for review.
 
-1. faça um fork do projeto;
-2. crie uma branch para sua alteração;
-3. descreva o comportamento esperado e os testes realizados;
-4. mantenha a documentação e os diagramas atualizados; e
-5. abra um Pull Request com contexto técnico suficiente para revisão.
+## License and project status
 
-## Licença
+No license file is currently included in the repository. Add an explicit open-source license before redistributing the project or incorporating it into a commercial product.
 
-Este projeto é distribuído para fins educacionais, de estudo e desenvolvimento de sistemas embarcados. Antes de reutilizar ou redistribuir o código em um produto, confirme e formalize a licença aplicável ao repositório.
+## Author
 
-## Autor
-
-**Paulo Cesar Furlanetto Marques**
-
-Atuação e interesses: ESP32, Raspberry Pi, C#, PostgreSQL, sistemas embarcados, redes e IoT.
+**Paulo Cesar Furlanetto Marques**  
+Interests: ESP32, Raspberry Pi, C#, PostgreSQL, embedded systems, networking, and IoT.
 
 ---
 
 <div align="center">
 
-Se este projeto foi útil, considere deixar uma ⭐ no repositório.
+If this project helped you, consider leaving a ⭐ on the repository.
 
 </div>
