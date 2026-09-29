@@ -76,6 +76,7 @@ namespace CommEspe32
                 tbComando.Enabled = false;
                 rtbResposta.Enabled = false;
                 btnListen.Image = Properties.Resources.Check;
+                udp.Close();
                 if(t.IsAlive)
                 {
                     t.Abort();
