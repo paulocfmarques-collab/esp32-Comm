@@ -122,9 +122,13 @@ namespace CommEspe32
 
                     rtbResposta.Invoke((MethodInvoker)delegate
                     {
-                        rtbResposta.AppendText(Encoding.UTF8.GetString(message) + Environment.NewLine);
+                        rtbResposta.AppendText(Encoding.UTF8.GetString(message));
                         rtbResposta.SelectionStart = rtbResposta.Text.Length;
                         rtbResposta.ScrollToCaret();
+                        if (!Encoding.UTF8.GetString(message).Contains("\n"))
+                        {
+                            rtbResposta.AppendText(Environment.NewLine);
+                        }
                     });
                 }
                 catch
