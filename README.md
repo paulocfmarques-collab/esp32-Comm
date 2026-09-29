@@ -37,11 +37,20 @@ A lightweight WinForms diagnostic console for sending commands to an ESP32 over 
 
 **ESP32 Comm** is a bench-side tool for developing, testing, and diagnosing embedded firmware. It provides a simple operator workflow:
 
-1. enter the ESP32 IPv4 address and UDP port;
-2. open a local UDP listener;
-3. type and transmit an ASCII command; and
-4. inspect UTF-8 responses in a scrollable diagnostic console.
+```mermaid
+sequenceDiagram
+    participant User
+    participant App as ESP32 Comm
+    participant ESP as ESP32 Device
 
+    User->>App: Enter command
+    User->>App: Click Send
+
+    App->>ESP: UDP command
+    ESP-->>App: UDP response
+
+    App-->>User: Display response
+```
 The repository contains the **Windows client only**. The ESP32 firmware is external and must implement the command and response behavior required by your project.
 
 > **Naming note:** the solution and C# namespace are currently named `CommEspe32`, while the repository and product documentation use `ESP32 Comm`.
@@ -87,21 +96,17 @@ flowchart LR
 
 ## Network schematic
 
-```text
-                              LOCAL NETWORK
+```mermaid
+flowchart LR
+    PC["Windows Workstation<br/>ESP32 Comm<br/>UDP Listener :5000"]
+    NET["Wi‑Fi / Ethernet"]
+    ESP["ESP32 Device<br/>UDP Server :5000"]
 
-  ┌──────────────────────────────┐                    ┌────────────────────────────┐
-  │ Windows workstation           │                    │ ESP32 device                │
-  │                              │                    │                            │
-  │ ESP32 Comm / WinForms        │                    │ User firmware              │
-  │ UdpClient listens :5000      │                    │ UDP server :5000           │
-  │                              │                    │ IP: 192.168.0.100          │
-  └───────────────┬──────────────┘                    └─────────────┬──────────────┘
-                  │                                                 │
-                  └────────────── Wi-Fi / Ethernet ──────────────────┘
+    PC -->|Command| ESP
+    ESP -->|Response| PC
 
-                 command: PC ───────────────────────────────▶ ESP32
-                response: PC ◀─────────────────────────────── ESP32
+    PC --- NET
+    NET --- ESP
 ```
 
 ### Endpoint model
@@ -140,22 +145,38 @@ sequenceDiagram
 
 ### Listener state machine
 
-```text
-                 valid endpoint + Listen
-  ┌──────────┐ ───────────────────────────▶ ┌─────────────────────┐
-  │ Stopped  │                               │ Listening           │
-  │ editable │ ◀─────────────────────────── │ socket + thread     │
-  └──────────┘       Listen / close         │ endpoint locked     │
-                                            └─────────────────────┘
+```mermaid
+stateDiagram-v2
+    [*] --> Stopped
+
+    Stopped : Endpoint editable
+
+    Listening : Socket active
+    Listening : Receive thread running
+    Listening : Endpoint locked
+
+    Stopped --> Listening : Listen\nValid endpoint
+    Listening --> Stopped : Stop listening
 ```
+
 
 ## Communication contract
 
 The client sends the contents of the command textbox as one ASCII UDP datagram. It accepts any response payload from the ESP32 and displays it as UTF-8 text followed by a new line.
 
-```text
-Outbound: ASCII bytes | one UDP datagram | command text
-Inbound:  UTF-8 bytes  | one UDP datagram | displayed in response console
+```mermaid
+flowchart LR
+    CMD["Command Text"]
+    ASCII["ASCII Encoding"]
+    UDP1["UDP Datagram"]
+    ESP["ESP32"]
+
+    UDP2["UDP Datagram"]
+    UTF8["UTF-8 Decoding"]
+    RESP["Response Text"]
+
+    CMD --> ASCII --> UDP1 --> ESP
+    ESP --> UDP2 --> UTF8 --> RESP
 ```
 
 The client does not currently add framing, message IDs, checksums, authentication, retries, or a fixed command catalog. Those behaviors belong in the firmware/application protocol if needed.
@@ -177,13 +198,18 @@ These are suggested firmware commands, not commands enforced by the client:
 
 Example exchange:
 
-```text
-TX → CPU
-RX ← Model: ESP32-D0WD-V3
-     Revision: 301
-     Cores: 2
-     CPU: 240 MHz
-     Free RAM: 230136 bytes
+```mermaid
+sequenceDiagram
+    participant PC as ESP32 Comm
+    participant ESP as ESP32
+
+    PC->>ESP: CPU
+
+    ESP-->>PC: Model: ESP32-D0WD-V3
+    ESP-->>PC: Revision: 301
+    ESP-->>PC: Cores: 2
+    ESP-->>PC: CPU: 240 MHz
+    ESP-->>PC: Free RAM: 230136 bytes
 ```
 
 ## Requirements
@@ -219,16 +245,21 @@ CommEspe32/CommEspe32/bin/Release/
 
 ## Using the application
 
-1. **Prepare the ESP32.** Connect it to the network, start its UDP listener, and make it reply to the sender's IP and source port.
-2. **Configure the endpoint.** For example:
-   ```text
-   IP:    192.168.0.100
-   Porta: 5000
-   ```
-3. **Start listening.** Click **Listen**. The endpoint fields become locked and command controls are enabled.
-4. **Send a command.** Enter a command and click **Envia**. Responses appear in **Resposta**.
-5. **Stop communication.** Click **Listen** again or close the window. The socket is closed when the form exits.
+```mermaid
+flowchart TD
+    A[Start Application]
+    B[Enter IP Address]
+    C[Enter Port]
+    D[Click Listen]
+    E[Receive UDP Message]
+    F[Display Response]
+    G[Send Command]
+    H[Receive Device Reply]
 
+    A --> B --> C --> D
+    D --> E --> F
+    F --> G --> H
+```
 ## ESP32 firmware integration
 
 The firmware should reply to the source endpoint of each received packet. A conceptual Arduino/ESP32 `WiFiUDP` loop looks like this:
@@ -255,26 +286,26 @@ For production use, define a maximum payload size, normalize commands, return ex
 
 ## Project structure
 
-```text
-esp32-Comm/
-├── README.md
-└── CommEspe32/
-    ├── CommEspe32.sln
-    └── CommEspe32/
-        ├── CommEspe32.csproj
-        ├── App.config
-        ├── Program.cs
-        ├── Form1.cs
-        ├── Form1.Designer.cs
-        ├── Form1.resx
-        ├── Check.png
-        ├── X.png
-        └── Properties/
-            ├── AssemblyInfo.cs
-            ├── Resources.resx
-            ├── Resources.Designer.cs
-            ├── Settings.settings
-            └── Settings.Designer.cs
+```mermaid
+flowchart TD
+
+    ROOT["esp32-Comm"]
+
+    ROOT --> README["README.md"]
+    ROOT --> SRC["CommEspe32"]
+
+    SRC --> SLN["CommEspe32.sln"]
+    SRC --> CSPROJ["CommEspe32.csproj"]
+    SRC --> APP["App.config"]
+    SRC --> PROGRAM["Program.cs"]
+    SRC --> FORM["Form1.cs"]
+    SRC --> DESIGNER["Form1.Designer.cs"]
+
+    SRC --> PROPERTIES["Properties"]
+
+    PROPERTIES --> ASM["AssemblyInfo.cs"]
+    PROPERTIES --> RES["Resources.resx"]
+    PROPERTIES --> SET["Settings.settings"]
 ```
 
 ## Limitations and security
