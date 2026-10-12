@@ -38,6 +38,8 @@
             this.rtbResposta = new System.Windows.Forms.RichTextBox();
             this.label4 = new System.Windows.Forms.Label();
             this.btnListen = new System.Windows.Forms.Button();
+            this.lbComandos = new System.Windows.Forms.ListBox();
+            this.label5 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // tbIP
@@ -73,6 +75,7 @@
             this.tbPorta.Name = "tbPorta";
             this.tbPorta.Size = new System.Drawing.Size(64, 20);
             this.tbPorta.TabIndex = 3;
+            this.tbPorta.Text = "4210";
             this.tbPorta.TextChanged += new System.EventHandler(this.tbPorta_TextChanged);
             // 
             // label3
@@ -91,6 +94,8 @@
             this.tbComando.Name = "tbComando";
             this.tbComando.Size = new System.Drawing.Size(392, 20);
             this.tbComando.TabIndex = 6;
+            this.tbComando.TextChanged += new System.EventHandler(this.tbComando_TextChanged);
+            this.tbComando.KeyDown += new System.Windows.Forms.KeyEventHandler(this.tbComando_KeyDown);
             // 
             // btnEnvia
             // 
@@ -106,7 +111,7 @@
             // rtbResposta
             // 
             this.rtbResposta.Enabled = false;
-            this.rtbResposta.Location = new System.Drawing.Point(12, 114);
+            this.rtbResposta.Location = new System.Drawing.Point(12, 215);
             this.rtbResposta.Name = "rtbResposta";
             this.rtbResposta.ReadOnly = true;
             this.rtbResposta.Size = new System.Drawing.Size(728, 177);
@@ -116,7 +121,7 @@
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(12, 98);
+            this.label4.Location = new System.Drawing.Point(12, 199);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(55, 13);
             this.label4.TabIndex = 9;
@@ -135,11 +140,64 @@
             this.btnListen.UseVisualStyleBackColor = true;
             this.btnListen.Click += new System.EventHandler(this.btnListen_Click);
             // 
+            // lbComandos
+            // 
+            this.lbComandos.Enabled = false;
+            this.lbComandos.FormattingEnabled = true;
+            this.lbComandos.Items.AddRange(new object[] {
+            "help",
+            "info",
+            "status",
+            "version",
+            "build",
+            "reason",
+            "uptime",
+            "alive",
+            "reboot",
+            "reset_wifi",
+            "temp",
+            "cpu",
+            "ram",
+            "flash",
+            "heap",
+            "net_info",
+            "mac",
+            "ip",
+            "rssi",
+            "ssid",
+            "wifi_status",
+            "wifi_list",
+            "time      ",
+            "date      ",
+            "ntp_status",
+            "dst_on",
+            "dst_off",
+            "clima",
+            "clima_sync",
+            "sd_status",
+            "sd_list"});
+            this.lbComandos.Location = new System.Drawing.Point(15, 114);
+            this.lbComandos.MultiColumn = true;
+            this.lbComandos.Name = "lbComandos";
+            this.lbComandos.Size = new System.Drawing.Size(728, 82);
+            this.lbComandos.TabIndex = 11;
+            // 
+            // label5
+            // 
+            this.label5.AutoSize = true;
+            this.label5.Location = new System.Drawing.Point(12, 98);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(60, 13);
+            this.label5.TabIndex = 12;
+            this.label5.Text = "Comandos:";
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(752, 303);
+            this.ClientSize = new System.Drawing.Size(752, 404);
+            this.Controls.Add(this.label5);
+            this.Controls.Add(this.lbComandos);
             this.Controls.Add(this.label4);
             this.Controls.Add(this.rtbResposta);
             this.Controls.Add(this.btnEnvia);
@@ -172,6 +230,8 @@
         private System.Windows.Forms.Button btnEnvia;
         private System.Windows.Forms.RichTextBox rtbResposta;
         private System.Windows.Forms.Label label4;
+        private System.Windows.Forms.ListBox lbComandos;
+        private System.Windows.Forms.Label label5;
     }
 }
 

@@ -20,6 +20,8 @@ namespace CommEspe32
         bool bContinue = false;
         Thread t;
         UdpClient udp;
+
+        private bool alterado;
         
         public Form1()
         {
@@ -63,6 +65,7 @@ namespace CommEspe32
                     btnEnvia.Enabled = true;
                     tbComando.Enabled = true;
                     rtbResposta.Enabled = true;
+                    lbComandos.Enabled = true;
                     t = new Thread(ReceiveThread);
                     t.Start();
                 }
@@ -75,6 +78,7 @@ namespace CommEspe32
                 btnEnvia.Enabled = false;
                 tbComando.Enabled = false;
                 rtbResposta.Enabled = false;
+                lbComandos.Enabled = false;
                 btnListen.Image = Properties.Resources.Check;
                 udp.Close();
                 if(t.IsAlive)
@@ -141,6 +145,11 @@ namespace CommEspe32
 
         private void btnEnvia_Click(object sender, EventArgs e)
         {
+            if(lbComandos.SelectedIndex != -1)
+            {
+                tbComando.Text = lbComandos.SelectedItem.ToString();
+            }
+
             IPEndPoint destino = new IPEndPoint(Servidor, Porta);
             byte[] buffer = Encoding.ASCII.GetBytes(tbComando.Text);
             udp.Send(buffer, buffer.Length, destino);
@@ -151,6 +160,20 @@ namespace CommEspe32
             if (udp != null)
             {
                 udp.Close();
+            }
+        }
+
+        private void tbComando_TextChanged(object sender, EventArgs e)
+        {
+            alterado = true;
+        }
+
+        private void tbComando_KeyDown(object sender, KeyEventArgs e)
+        {
+            if(e.KeyCode == Keys.Enter && alterado)
+            {
+                alterado = false;
+                btnEnvia.PerformClick();
             }
         }
     }
