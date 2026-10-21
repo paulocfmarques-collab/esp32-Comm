@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Collections.Concurrent;
 
 namespace CommEspe32
 {
@@ -20,6 +21,8 @@ namespace CommEspe32
         bool bContinue = false;
         Thread t;
         UdpClient udp;
+        private ConcurrentQueue<string> filaRespostas = new ConcurrentQueue<string>();
+        private AutoResetEvent respostaRecebida = new AutoResetEvent(false);
 
         private bool alterado;
         
@@ -57,6 +60,8 @@ namespace CommEspe32
 
                     udp = new UdpClient(Porta);
                     udp.Client.ReceiveBufferSize = 19000;
+                    udp.Client.ReceiveTimeout = 5000;
+
 
                     bContinue = true;
                     btnListen.Image = Properties.Resources.X;
@@ -68,6 +73,8 @@ namespace CommEspe32
                     lbComandos.Enabled = true;
                     t = new Thread(ReceiveThread);
                     t.Start();
+
+                    FillLbComandos();
                 }
             }
             else
@@ -80,11 +87,7 @@ namespace CommEspe32
                 rtbResposta.Enabled = false;
                 lbComandos.Enabled = false;
                 btnListen.Image = Properties.Resources.Check;
-                udp.Close();
-                if(t.IsAlive)
-                {
-                    t.Abort();
-                }
+                StopListen();
             }
         }
 
@@ -114,35 +117,43 @@ namespace CommEspe32
         {
             IPEndPoint remoto = new IPEndPoint(IPAddress.Any, 0);
 
-            rtbResposta.Invoke((MethodInvoker)delegate
-            {
-                rtbResposta.Clear();
-            });
-
             while (bContinue)
             {
                 try
                 {
                     byte[] message = udp.Receive(ref remoto);
 
-                    rtbResposta.Invoke((MethodInvoker)delegate
+                    string texto = Encoding.UTF8.GetString(message);
+
+                    filaRespostas.Enqueue(texto);
+
+                    respostaRecebida.Set();
+
+                    rtbResposta.Invoke((MethodInvoker)(() =>
                     {
-                        rtbResposta.AppendText(Encoding.UTF8.GetString(message));
+                        rtbResposta.AppendText(texto);
+
+                        if (!texto.EndsWith("\n"))
+                            rtbResposta.AppendText(Environment.NewLine);
+
                         rtbResposta.SelectionStart = rtbResposta.Text.Length;
                         rtbResposta.ScrollToCaret();
-                        if (!Encoding.UTF8.GetString(message).Contains("\n"))
-                        {
-                            rtbResposta.AppendText(Environment.NewLine);
-                        }
-                    });
+                    }));
                 }
-                catch
+                catch (SocketException ex)
+                {
+                    if (ex.SocketErrorCode == SocketError.TimedOut)
+                        continue;
+
+                    break;
+                }
+                catch (ObjectDisposedException)
                 {
                     break;
                 }
             }
         }
-
+        
         private void btnEnvia_Click(object sender, EventArgs e)
         {
             if(lbComandos.SelectedIndex != -1)
@@ -150,17 +161,13 @@ namespace CommEspe32
                 tbComando.Text = lbComandos.SelectedItem.ToString();
             }
 
-            IPEndPoint destino = new IPEndPoint(Servidor, Porta);
-            byte[] buffer = Encoding.ASCII.GetBytes(tbComando.Text);
-            udp.Send(buffer, buffer.Length, destino);
+            sendCommand(tbComando.Text);
+        
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (udp != null)
-            {
-                udp.Close();
-            }
+            StopListen();
         }
 
         private void tbComando_TextChanged(object sender, EventArgs e)
@@ -176,5 +183,91 @@ namespace CommEspe32
                 btnEnvia.PerformClick();
             }
         }
+
+        private void tbComando_Enter(object sender, EventArgs e)
+        {
+            lbComandos.ClearSelected();
+        }
+
+        private void sendCommand(string sCommand)
+        {
+            IPEndPoint destino = new IPEndPoint(Servidor, Porta);
+            byte[] buffer = Encoding.ASCII.GetBytes(sCommand);
+            udp.Send(buffer, buffer.Length, destino);
+        }
+
+        private bool ReceiveAnswer(out string resposta)
+        {
+            resposta = string.Empty;
+
+            if (!respostaRecebida.WaitOne(5000))
+            {
+                return false;
+            }
+
+            return filaRespostas.TryDequeue(out resposta);
+        }
+
+        private void FillLbComandos()
+        {
+            ClearQueue();
+
+            sendCommand("help");
+
+            string resposta;
+
+            if (ReceiveAnswer(out resposta))
+            {
+                lbComandos.Items.Clear();
+
+                string[] linhas = resposta.Split(
+                    new string[] { "\r\n", "\n" },
+                    StringSplitOptions.None);
+
+                for (int i = 1; i < linhas.Length; i++)
+                {
+                    if (!string.IsNullOrWhiteSpace(linhas[i]))
+                    {
+                        lbComandos.Items.Add(linhas[i]);
+                    }
+                }
+
+                rtbResposta.Clear();
+            }
+            else
+            {
+                MessageBox.Show(
+                    "O equipamento não respondeu.",
+                    "Timeout",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
+        }
+
+        private void ClearQueue()
+        {
+            string lixo;
+
+            while (filaRespostas.TryDequeue(out lixo))
+            {
+            }
+        }
+
+        private void StopListen()
+        {
+            bContinue = false;
+
+            if (udp != null)
+            {
+                udp.Close();
+                udp = null;
+            }
+
+            if (t != null && t.IsAlive)
+            {
+                t.Join(1000);
+            }
+        }
+
     }
 }

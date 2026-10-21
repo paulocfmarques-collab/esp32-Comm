@@ -95,6 +95,7 @@
             this.tbComando.Size = new System.Drawing.Size(392, 20);
             this.tbComando.TabIndex = 6;
             this.tbComando.TextChanged += new System.EventHandler(this.tbComando_TextChanged);
+            this.tbComando.Enter += new System.EventHandler(this.tbComando_Enter);
             this.tbComando.KeyDown += new System.Windows.Forms.KeyEventHandler(this.tbComando_KeyDown);
             // 
             // btnEnvia
@@ -145,41 +146,42 @@
             this.lbComandos.Enabled = false;
             this.lbComandos.FormattingEnabled = true;
             this.lbComandos.Items.AddRange(new object[] {
-            "help",
-            "info",
-            "status",
-            "version",
-            "build",
-            "reason",
-            "uptime",
             "alive",
-            "reboot",
-            "reset_wifi",
-            "temp",
-            "cpu",
-            "ram",
-            "flash",
-            "heap",
-            "net_info",
-            "mac",
-            "ip",
-            "rssi",
-            "ssid",
-            "wifi_status",
-            "wifi_list",
-            "time      ",
-            "date      ",
-            "ntp_status",
-            "dst_on",
-            "dst_off",
+            "build",
             "clima",
             "clima_sync",
+            "cpu",
+            "date      ",
+            "dst_off",
+            "dst_on",
+            "flash",
+            "heap",
+            "help",
+            "info",
+            "ip",
+            "mac",
+            "net_info",
+            "ntp_status",
+            "ram",
+            "reason",
+            "reboot",
+            "reset_wifi",
+            "rssi",
+            "sd_list",
             "sd_status",
-            "sd_list"});
+            "ssid",
+            "status",
+            "temp",
+            "time      ",
+            "uptime",
+            "version",
+            "wifi_list",
+            "wifi_status"});
             this.lbComandos.Location = new System.Drawing.Point(15, 114);
             this.lbComandos.MultiColumn = true;
             this.lbComandos.Name = "lbComandos";
             this.lbComandos.Size = new System.Drawing.Size(728, 82);
+            this.lbComandos.Sorted = true;
             this.lbComandos.TabIndex = 11;
             // 
             // label5
